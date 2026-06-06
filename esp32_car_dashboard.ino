@@ -10,7 +10,7 @@
 Preferences preferences;
 uint32_t serialNumber;
 char ssid[32];
-const char* password = "A5k6Wm";
+const char* password = "12345678";
 
 // BLE ELM327 - common UUIDs
 static BLEUUID serviceUUID("fff0");
