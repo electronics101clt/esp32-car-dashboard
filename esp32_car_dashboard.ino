@@ -4,9 +4,12 @@
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEClient.h>
+#include <Preferences.h>
 
-// WiFi AP credentials
-const char* ssid = "ESP32-Control";
+// Persistent serial number
+Preferences preferences;
+uint32_t serialNumber;
+char ssid[32];
 const char* password = "12345678";
 
 // BLE ELM327 - common UUIDs
@@ -373,7 +376,23 @@ void setup() {
     delay(1000);
 
     Serial.println();
-    Serial.println("Starting ESP32 Car Dashboard (BLE)...");
+    Serial.println("Starting ZS Car Dashboard (BLE)...");
+
+    // Load or generate serial number (persistent across reboots)
+    preferences.begin("zs-dash", false);
+    serialNumber = preferences.getUInt("serial", 0);
+    if (serialNumber == 0) {
+        // First boot - generate and save new serial
+        serialNumber = esp_random() % 100000000;  // 0-99999999 (8 digits)
+        preferences.putUInt("serial", serialNumber);
+        Serial.print("Generated new serial: ");
+        Serial.println(serialNumber);
+    } else {
+        Serial.print("Loaded serial: ");
+        Serial.println(serialNumber);
+    }
+    preferences.end();
+    snprintf(ssid, sizeof(ssid), "ZS-%08u", serialNumber);
 
     // Set up WiFi AP FIRST to ensure hotspot is always available
     WiFi.mode(WIFI_AP);
@@ -390,7 +409,9 @@ void setup() {
     Serial.println("Web server started!");
 
     // Init BLE after WiFi is running
-    BLEDevice::init("ESP32-Dashboard");
+    char bleName[32];
+    snprintf(bleName, sizeof(bleName), "ZS-Dash-%04X", serialNumber & 0xFFFF);
+    BLEDevice::init(bleName);
     pBLEScan = BLEDevice::getScan();
     pBLEScan->setActiveScan(true);
     pBLEScan->setInterval(100);
@@ -405,7 +426,8 @@ void setup() {
         Serial.println("ELM327 not found, will retry...");
     }
 
-    Serial.println("Dashboard started!");
+    Serial.print("ZS Dashboard started! Serial: ");
+    Serial.println(serialNumber, HEX);
 }
 
 void loop() {
