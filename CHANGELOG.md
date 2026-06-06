@@ -2,6 +2,51 @@
 
 All notable changes to ESP32 Car Dashboard will be documented in this file.
 
+## [2.0.0] - 2026-06-06
+
+### Major Overhaul - Realistic Analog Gauges
+
+#### Added
+- **HTML5 Canvas Gauges**: Complete rewrite using Canvas API for authentic analog gauges
+- **Tick Marks**: Major and minor tick marks like real automotive instrument clusters
+- **Numbered Dials**: Numbers displayed at major tick intervals around gauge face
+- **Realistic Needle**: Rotating needle with center hub and smooth animation
+- **Colored Progress Arc**: Arc showing current value range with gradient colors
+- **BLE ELM327 Support**: Automatic scanning and connection to Bluetooth OBD-II adapters
+- **Persistent Serial Number**: 8-digit random serial stored in flash memory (survives reboots)
+- **Dynamic SSID**: WiFi network named `ZS-XXXXXXXX` based on persistent serial
+
+#### Changed
+- **Gauge Rendering**: Migrated from SVG to HTML5 Canvas for better performance and realism
+- **Layout**: 2 large gauges (280x280) for Speed/RPM, 6 small gauges (140x140) for other metrics
+- **SSID Format**: Changed from static "ESP32-Control" to dynamic "ZS-XXXXXXXX"
+- **Password**: Remains "12345678" for compatibility
+- **Styling**: Dark radial gradient backgrounds matching real car instrument clusters
+- **Warning Lights**: Simplified to 3 core warnings (Check Engine, Oil, Battery) with glow effects
+
+#### Technical Details
+- **Canvas Drawing**: Custom `drawGauge()` function renders all gauge elements
+- **Tick Calculation**: Dynamic tick mark positioning using trigonometry
+- **Number Placement**: Text positioned around arc at major tick intervals
+- **Needle Rotation**: Smooth rotation based on value percentage (270° arc)
+- **Preferences API**: Uses ESP32 Preferences library to store serial number
+- **BLE Integration**: Full BLE characteristic discovery and notification support
+
+#### Memory Usage
+- **Program Storage**: 1,694,311 bytes (80% of 2,097,152 bytes with no_ota partition)
+- **Dynamic Memory**: 62,504 bytes (19% of 327,680 bytes)
+- **Partition Scheme**: Requires `no_ota` partition for larger HTML/Canvas code
+
+#### Browser Requirements
+- HTML5 Canvas support (all modern browsers)
+- JavaScript ES6 support
+- No external libraries or dependencies
+
+#### Breaking Changes
+- WiFi SSID now dynamic - users must look for `ZS-XXXXXXXX` networks
+- SVG-based gauge code removed - not compatible with v1.0.0
+- Warning lights reduced from 6 to 3
+
 ## [1.0.0] - 2026-06-03
 
 ### Initial Release

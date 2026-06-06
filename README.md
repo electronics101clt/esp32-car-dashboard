@@ -1,6 +1,6 @@
 # ESP32 Car Dashboard
 
-Comprehensive car dashboard with 8 live animated gauges, warning lights, and real-time data display. Perfect for automotive projects, OBD-II integration, or custom vehicle displays.
+Realistic automotive dashboard with 8 analog gauges featuring tick marks, numbers, and animated needles. Built with HTML5 Canvas for authentic instrument cluster appearance. Perfect for automotive projects, OBD-II integration, or custom vehicle displays.
 
 ![Car Dashboard](https://img.shields.io/badge/ESP32-Car%20Dashboard-green)
 ![Gauges](https://img.shields.io/badge/Gauges-8-blue)
@@ -8,30 +8,38 @@ Comprehensive car dashboard with 8 live animated gauges, warning lights, and rea
 
 ## Features
 
-### 8 Real-Time Gauges
-- **Speedometer** (0-200 km/h) with animated needle
-- **Tachometer/RPM** (0-8000 RPM) with red-zone styling
-- **Coolant Temperature** (50-130°C) color gradient (blue→red)
-- **Fuel Level** (0-100%) with low-fuel warning colors
-- **Engine Load** (0-100%) purple gradient
-- **Battery Voltage** (10-16V) with health indicator
-- **Intake Air Temperature** (0-100°C) blue→orange gradient
-- **Throttle Position** (0-100%) green→yellow gradient
+### 8 Realistic Analog Gauges
+- **Speedometer** (0-200 km/h) - Large gauge with 20 tick marks and numbers
+- **Tachometer/RPM** (0-8000 RPM) - Large gauge with red-zone styling
+- **Coolant Temperature** (50-130°C) - Cyan colored gauge with 8 ticks
+- **Fuel Level** (0-100%) - Yellow gauge with 10 tick marks
+- **Engine Load** (0-100%) - Purple gradient gauge
+- **Battery Voltage** (10-16V) - Green voltage indicator with 6 ticks
+- **Intake Air Temperature** (0-100°C) - Blue gauge with 10 ticks
+- **Throttle Position** (0-100%) - Orange throttle gauge
+
+### Realistic Gauge Features
+- **Tick Marks**: Major and minor tick marks like real automotive gauges
+- **Numbered Dial**: Numbers displayed at major tick intervals
+- **Animated Needle**: Smooth rotating needle with center hub
+- **Colored Arc**: Progressive arc showing current value range
+- **Dark Background**: Radial gradient background like real instrument clusters
+- **Canvas Rendering**: HTML5 Canvas for smooth, realistic graphics
 
 ### Dashboard Elements
-- **6 Warning Lights**: Check Engine, Oil Pressure, Battery, Brake, ABS, Airbag
-- **Info Panel**: Odometer, Trip Distance, Average Speed, Fuel Consumption
-- **Animated Gauges**: Smooth needle rotation and arc animations
+- **3 Warning Lights**: Check Engine, Oil Pressure, Battery (with glow effect)
+- **BLE ELM327 Support**: Connects to Bluetooth OBD-II adapters
+- **Persistent Serial**: 8-digit serial number (ZS-XXXXXXXX) stored in flash
 - **Responsive Design**: Works on phones, tablets, and desktop
-- **Dark Theme**: Modern cyberpunk-style interface with neon accents
+- **Dark Theme**: Automotive-style black background
 
 ### Technical Features
 - **Real-Time Updates**: 500ms refresh rate via JSON API
-- **WiFi Access Point**: Creates standalone network
+- **WiFi Access Point**: Creates standalone network `ZS-XXXXXXXX`
 - **HTTP Web Server**: Serves on 192.168.4.1:80
 - **JSON API**: RESTful endpoint for sensor data
-- **Simulated Data**: Built-in demo mode with realistic values
-- **OBD-II Ready**: Easy to integrate with CAN bus/OBD-II readers
+- **BLE OBD-II**: Automatically scans and connects to ELM327 devices
+- **Persistent Config**: Serial number survives reboots, changes only on reflash
 
 ## Hardware Requirements
 
@@ -63,15 +71,21 @@ arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32 esp32_car_dashboard.
 ## Configuration
 
 ### WiFi Settings
-```cpp
-const char* ssid = "ESP32-Control";
-const char* password = "12345678";
-```
+The ESP32 creates a unique WiFi access point on first boot:
+- **SSID**: `ZS-XXXXXXXX` (where XXXXXXXX is a random 8-digit number)
+- **Password**: `12345678`
+- **Dashboard URL**: `http://192.168.4.1`
 
-Access the dashboard at: `http://192.168.4.1`
+The serial number is stored in flash memory and persists across reboots. It only changes when you reflash the device.
+
+### BLE OBD-II Connection
+The dashboard automatically scans for and connects to Bluetooth ELM327 adapters:
+- Supports common BLE OBD-II adapters (OBDII, V-LINK, ELM327)
+- Auto-reconnects if connection is lost
+- Falls back to simulation mode if no adapter found
 
 ### Data Simulation
-The sketch includes built-in data simulation. Values change realistically:
+When no OBD-II adapter is connected, the sketch uses built-in data simulation:
 - Speed increases/decreases smoothly
 - RPM varies with throttle position
 - Coolant temp stays in normal range (85-105°C)

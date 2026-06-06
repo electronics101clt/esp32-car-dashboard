@@ -41,49 +41,56 @@ float throttle = 0;
 bool checkEngine = false;
 bool oilPressure = false;
 
-// Minimal HTML dashboard
+// Realistic analog gauges with canvas rendering
 const char* html = R"rawliteral(
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard</title><style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#111;color:#fff;font-family:sans-serif}
-.g{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:10px}
-.c{background:#1a1a1a;border-radius:8px;padding:15px;text-align:center}
-.v{font-size:28px;font-weight:bold}.u{font-size:11px;color:#666}.l{font-size:11px;color:#888;margin-top:5px}
-.c:nth-child(1) .v{color:#0f6}.c:nth-child(2) .v{color:#f55}.c:nth-child(3) .v{color:#4cf}
-.c:nth-child(4) .v{color:#fd0}.c:nth-child(5) .v{color:#e4f}.c:nth-child(6) .v{color:#6fa}
-.c:nth-child(7) .v{color:#48f}.c:nth-child(8) .v{color:#fa4}
-.w{display:flex;gap:8px;justify-content:center;padding:10px;flex-wrap:wrap}
-.w span{background:#222;padding:6px 12px;border-radius:4px;font-size:10px;color:#555}
-.w span.on{background:#f22;color:#fff}
-.s{text-align:center;padding:8px;font-size:11px;color:#555}
-@media(max-width:600px){.g{grid-template-columns:repeat(2,1fr)}}
+*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial;overflow:hidden}
+.d{display:flex;flex-wrap:wrap;gap:10px;padding:10px;justify-content:center}
+canvas{background:radial-gradient(circle at 50% 50%,#1a1a1a,#000);border-radius:10px;border:2px solid #222}
+.w{display:flex;gap:10px;justify-content:center;padding:10px;position:fixed;bottom:0;width:100%;background:#111}
+.w span{padding:6px 12px;border-radius:5px;font-size:10px;background:#222;color:#555;border:1px solid #333}
+.w span.on{background:#f22;color:#fff;box-shadow:0 0 10px #f22}
+@media(max-width:600px){canvas{width:140px!important;height:140px!important}}
 </style></head><body>
-<div class="g">
-<div class="c"><div class="v" id="spd">0</div><div class="u">km/h</div><div class="l">SPEED</div></div>
-<div class="c"><div class="v" id="rpm">0</div><div class="u">x1000</div><div class="l">RPM</div></div>
-<div class="c"><div class="v" id="tmp">0</div><div class="u">C</div><div class="l">COOLANT</div></div>
-<div class="c"><div class="v" id="fue">0</div><div class="u">%</div><div class="l">FUEL</div></div>
-<div class="c"><div class="v" id="lod">0</div><div class="u">%</div><div class="l">LOAD</div></div>
-<div class="c"><div class="v" id="vlt">0</div><div class="u">V</div><div class="l">BATTERY</div></div>
-<div class="c"><div class="v" id="int">0</div><div class="u">C</div><div class="l">INTAKE</div></div>
-<div class="c"><div class="v" id="thr">0</div><div class="u">%</div><div class="l">THROTTLE</div></div>
+<div class="d">
+<canvas id="c1" width="280" height="280"></canvas>
+<canvas id="c2" width="280" height="280"></canvas>
+<canvas id="c3" width="140" height="140"></canvas>
+<canvas id="c4" width="140" height="140"></canvas>
+<canvas id="c5" width="140" height="140"></canvas>
+<canvas id="c6" width="140" height="140"></canvas>
+<canvas id="c7" width="140" height="140"></canvas>
+<canvas id="c8" width="140" height="140"></canvas>
 </div>
-<div class="w"><span id="ce">CHECK</span><span id="oil">OIL</span><span id="bat">BATT</span></div>
-<div class="s" id="st">OBD: --</div>
+<div class="w"><span id="ce">CHECK</span><span id="oil">OIL</span><span id="bat">BATT</span><span id="st">--</span></div>
 <script>
+function drawGauge(ctx,w,h,val,min,max,label,color,ticks){ctx.clearRect(0,0,w,h);const cx=w/2,cy=h/2,r=Math.min(w,h)/2-20;ctx.fillStyle='#0a0a0a';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#1a1a1a';ctx.lineWidth=3;ctx.stroke();const sa=Math.PI*0.75,ea=Math.PI*2.25,range=ea-sa;for(let i=0;i<=ticks;i++){const a=sa+range*i/ticks;const cos=Math.cos(a),sin=Math.sin(a);const isM=i%(ticks/5)==0;ctx.strokeStyle='#444';ctx.lineWidth=isM?3:1;const len=isM?15:8;ctx.beginPath();ctx.moveTo(cx+cos*(r-5),cy+sin*(r-5));ctx.lineTo(cx+cos*(r-5-len),cy+sin*(r-5-len));ctx.stroke();if(isM){ctx.fillStyle='#888';ctx.font=(w>200?14:9)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';const num=min+i*(max-min)/ticks;ctx.fillText(num,cx+cos*(r-25),cy+sin*(r-25));}}const p=(val-min)/(max-min);const aa=sa+range*Math.max(0,Math.min(1,p));ctx.strokeStyle=color;ctx.lineWidth=4;ctx.beginPath();ctx.arc(cx,cy,r-10,sa,aa);ctx.stroke();ctx.save();ctx.translate(cx,cy);ctx.rotate(aa);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(r-15,0);ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fill();ctx.restore();ctx.fillStyle='#fff';ctx.font=(w>200?12:8)+'px Arial';ctx.textAlign='center';ctx.fillText(label,cx,cy-r+15);ctx.font=(w>200?24:16)+'px Arial';ctx.fillStyle=color;ctx.fillText(Math.round(val),cx,cy+r-20);}
+const cfg=[
+{id:'c1',min:0,max:140,label:'SPEED MPH',color:'#0f6',ticks:14},
+{id:'c2',min:0,max:8,label:'RPM x1000',color:'#f55',ticks:8},
+{id:'c3',min:120,max:270,label:'COOLANT F',color:'#4cf',ticks:15},
+{id:'c4',min:0,max:100,label:'FUEL',color:'#fd0',ticks:10},
+{id:'c5',min:0,max:100,label:'LOAD',color:'#e4f',ticks:10},
+{id:'c6',min:10,max:16,label:'VOLTS',color:'#6fa',ticks:6},
+{id:'c7',min:30,max:210,label:'INTAKE F',color:'#48f',ticks:18},
+{id:'c8',min:0,max:100,label:'THROTTLE',color:'#fa4',ticks:10}
+];
+const ctxs=cfg.map(c=>{const el=document.getElementById(c.id);return{ctx:el.getContext('2d'),w:el.width,h:el.height,...c}});
 async function u(){try{const r=await fetch('/api/data'),d=await r.json();
-document.getElementById('spd').textContent=Math.round(d.speed);
-document.getElementById('rpm').textContent=(d.rpm/1000).toFixed(1);
-document.getElementById('tmp').textContent=Math.round(d.coolant);
-document.getElementById('fue').textContent=Math.round(d.fuel);
-document.getElementById('lod').textContent=Math.round(d.load);
-document.getElementById('vlt').textContent=d.voltage.toFixed(1);
-document.getElementById('int').textContent=Math.round(d.intake);
-document.getElementById('thr').textContent=Math.round(d.throttle);
+const mph=d.speed*0.621371;const coolF=d.coolant*9/5+32;const intF=d.intake*9/5+32;
+drawGauge(ctxs[0].ctx,ctxs[0].w,ctxs[0].h,mph,0,140,'SPEED MPH','#0f6',14);
+drawGauge(ctxs[1].ctx,ctxs[1].w,ctxs[1].h,d.rpm/1000,0,8,'RPM x1000','#f55',8);
+drawGauge(ctxs[2].ctx,ctxs[2].w,ctxs[2].h,coolF,120,270,'COOLANT F','#4cf',15);
+drawGauge(ctxs[3].ctx,ctxs[3].w,ctxs[3].h,d.fuel,0,100,'FUEL','#fd0',10);
+drawGauge(ctxs[4].ctx,ctxs[4].w,ctxs[4].h,d.load,0,100,'LOAD','#e4f',10);
+drawGauge(ctxs[5].ctx,ctxs[5].w,ctxs[5].h,d.voltage,10,16,'VOLTS','#6fa',6);
+drawGauge(ctxs[6].ctx,ctxs[6].w,ctxs[6].h,intF,30,210,'INTAKE F','#48f',18);
+drawGauge(ctxs[7].ctx,ctxs[7].w,ctxs[7].h,d.throttle,0,100,'THROTTLE','#fa4',10);
 document.getElementById('ce').className=d.checkEngine?'on':'';
 document.getElementById('oil').className=d.oilPressure?'on':'';
 document.getElementById('bat').className=d.voltage<12?'on':'';
-document.getElementById('st').textContent='OBD: '+(d.obdConnected?'Connected':'Disconnected');
+document.getElementById('st').textContent='OBD:'+(d.obdConnected?'OK':'--');
 }catch(e){}}u();setInterval(u,500);
 </script></body></html>
 )rawliteral";
