@@ -55,18 +55,21 @@ Realistic automotive dashboard with 8 analog gauges featuring tick marks, number
 # Install ESP32 board support
 arduino-cli core install esp32:esp32
 
-# Compile
-arduino-cli compile --fqbn esp32:esp32:esp32 esp32_car_dashboard.ino
+# Compile (requires no_ota partition scheme - sketch is too large for default)
+arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=no_ota esp32_car_dashboard.ino
 
-# Upload
-arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32 esp32_car_dashboard.ino --upload-field serial.upload_speed=115200
+# Upload (use 115200 baud for stability)
+arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32:PartitionScheme=no_ota,UploadSpeed=115200 esp32_car_dashboard.ino
 ```
+
+> **Note**: This sketch requires the `no_ota` partition scheme due to its size (~1.7MB). The default partition only allows 1.3MB for the app. Using `no_ota` provides 2MB for the application by removing OTA update capability.
 
 ### Using Arduino IDE
 1. Open `esp32_car_dashboard.ino`
 2. Select Board: **ESP32 Dev Module**
 3. Select Port: (your ESP32 port)
-4. Click **Upload**
+4. Go to Tools → Partition Scheme → **No OTA (2MB APP/2MB SPIFFS)**
+5. Click **Upload**
 
 ## Configuration
 
@@ -162,9 +165,9 @@ To connect real vehicle data:
 
 ## Memory Usage
 
-- **Program Storage**: ~957KB / 1310KB (73%)
-- **Dynamic Memory**: ~47KB / 327KB (14%)
-- **Flash Required**: Minimum 1MB
+- **Program Storage**: ~1.7MB / 2MB (80%) - requires `no_ota` partition
+- **Dynamic Memory**: ~62KB / 327KB (19%)
+- **Flash Required**: Minimum 4MB
 
 ## Browser Compatibility
 
