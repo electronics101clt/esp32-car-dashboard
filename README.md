@@ -32,6 +32,7 @@ Realistic automotive dashboard with 8 analog gauges featuring tick marks, number
 
 ### Dashboard Elements
 - **3 Warning Lights**: Check Engine, Oil Pressure, Battery (with glow effect)
+- **DTC Reader**: Click CHECK ENGINE light to view diagnostic trouble codes from vehicle ECU
 - **BLE ELM327 Support**: Connects to Bluetooth OBD-II adapters
 - **Persistent Serial**: 8-digit serial number (ZS-XXXXXXXX) stored in flash
 - **Responsive Design**: Works on phones, tablets, and desktop
@@ -41,8 +42,11 @@ Realistic automotive dashboard with 8 analog gauges featuring tick marks, number
 - **Real-Time Updates**: 100ms gauge refresh rate via JSON API
 - **WiFi Access Point**: Creates standalone network `ZS-XXXXXXXX`
 - **HTTP Web Server**: Serves on 192.168.4.1:80
-- **JSON API**: RESTful endpoint for sensor data
+- **JSON API**: RESTful endpoints for sensor data and diagnostics
+  - `/api/data` - Real-time sensor values
+  - `/api/dtc` - Diagnostic trouble codes
 - **BLE OBD-II**: Automatically scans and connects to ELM327 devices
+- **DTC Reading**: Retrieves and displays trouble codes from vehicle ECU
 - **Persistent Config**: Serial number survives reboots, changes only on reflash
 - **No External Dependencies**: All gauges render using embedded code (no CDN required)
 
@@ -110,7 +114,7 @@ When no OBD-II adapter is connected, the sketch uses built-in data simulation:
 - Fuel level decreases over time
 - Voltage fluctuates around 14.2V
 
-## API Endpoint
+## API Endpoints
 
 ### GET /api/data
 Returns JSON with current sensor values:
@@ -126,9 +130,33 @@ Returns JSON with current sensor values:
   "intake": 28.5,
   "throttle": 42.0,
   "checkEngine": false,
-  "oilPressure": false
+  "oilPressure": false,
+  "obdConnected": true
 }
 ```
+
+### GET /api/dtc
+Returns diagnostic trouble codes from vehicle ECU:
+
+```json
+{
+  "codes": ["P0133", "P0171"],
+  "connected": true
+}
+```
+
+**Usage**: Called automatically when user clicks the CHECK ENGINE warning light. Sends OBD-II command "03" to retrieve stored DTCs. Returns empty array if no codes present.
+
+**DTC Format**: Standard format (P0xxx = Powertrain, C0xxx = Chassis, B0xxx = Body, U0xxx = Network)
+
+## Reading Diagnostic Codes
+
+1. Ensure OBD-II adapter is connected (status shows "OBD: CONN")
+2. Click the **CHECK ENGINE** warning light on the dashboard
+3. Modal popup will display any stored trouble codes
+4. Click outside modal or X button to close
+
+**Note**: If OBD is not connected, modal will show "OBD not connected" message. If connected but no codes are stored, it will show "No trouble codes found".
 
 ## Customization
 
