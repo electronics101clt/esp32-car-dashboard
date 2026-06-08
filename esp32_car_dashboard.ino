@@ -41,57 +41,73 @@ float throttle = 0;
 bool checkEngine = false;
 bool oilPressure = false;
 
-// Realistic analog gauges with canvas rendering
+// Car dashboard using Gauge.js library
 const char* html = R"rawliteral(
 <!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Dashboard</title><style>
-*{margin:0;padding:0;box-sizing:border-box}body{background:#000;color:#fff;font-family:Arial;overflow:hidden}
-.d{display:flex;flex-wrap:wrap;gap:10px;padding:10px;justify-content:center}
-canvas{background:radial-gradient(circle at 50% 50%,#1a1a1a,#000);border-radius:10px;border:2px solid #222}
-.w{display:flex;gap:10px;justify-content:center;padding:10px;position:fixed;bottom:0;width:100%;background:#111}
-.w span{padding:6px 12px;border-radius:5px;font-size:10px;background:#222;color:#555;border:1px solid #333}
-.w span.on{background:#f22;color:#fff;box-shadow:0 0 10px #f22}
-@media(max-width:600px){canvas{width:140px!important;height:140px!important}}
-</style></head><body>
-<div class="d">
-<canvas id="c1" width="280" height="280"></canvas>
-<canvas id="c2" width="280" height="280"></canvas>
-<canvas id="c3" width="140" height="140"></canvas>
-<canvas id="c4" width="140" height="140"></canvas>
-<canvas id="c5" width="140" height="140"></canvas>
-<canvas id="c6" width="140" height="140"></canvas>
-<canvas id="c7" width="140" height="140"></canvas>
-<canvas id="c8" width="140" height="140"></canvas>
+<title>Car Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/gaugejs@1.3.9/dist/gauge.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:Arial,sans-serif;overflow-x:hidden}
+.dash{display:flex;flex-wrap:wrap;gap:15px;padding:20px;justify-content:center;align-items:center}
+.gauge-wrapper{position:relative;display:inline-block}
+.gauge-label{position:absolute;bottom:35px;left:50%;transform:translateX(-50%);font-size:11px;font-weight:bold;letter-spacing:1px;text-shadow:0 0 5px rgba(0,0,0,0.8);white-space:nowrap}
+.large{width:280px;height:280px}
+.small{width:150px;height:150px}
+.warnings{display:flex;gap:15px;justify-content:center;padding:20px;position:fixed;bottom:0;width:100%;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-top:1px solid #333}
+.warn{padding:8px 16px;border-radius:6px;font-size:11px;font-weight:bold;background:#222;color:#666;border:2px solid #333;transition:all 0.3s}
+.warn.on{background:#d00;color:#fff;border-color:#f44;box-shadow:0 0 20px rgba(255,68,68,0.6);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
+@media(max-width:768px){.large{width:200px;height:200px}.small{width:120px;height:120px}}
+</style>
+</head><body>
+<div class="dash">
+<div class="gauge-wrapper large"><canvas id="g1"></canvas><div class="gauge-label">SPEED MPH</div></div>
+<div class="gauge-wrapper large"><canvas id="g2"></canvas><div class="gauge-label">RPM x1000</div></div>
+<div class="gauge-wrapper small"><canvas id="g3"></canvas><div class="gauge-label">COOLANT °F</div></div>
+<div class="gauge-wrapper small"><canvas id="g4"></canvas><div class="gauge-label">FUEL %</div></div>
+<div class="gauge-wrapper small"><canvas id="g5"></canvas><div class="gauge-label">LOAD %</div></div>
+<div class="gauge-wrapper small"><canvas id="g6"></canvas><div class="gauge-label">VOLTAGE</div></div>
+<div class="gauge-wrapper small"><canvas id="g7"></canvas><div class="gauge-label">INTAKE °F</div></div>
+<div class="gauge-wrapper small"><canvas id="g8"></canvas><div class="gauge-label">THROTTLE</div></div>
 </div>
-<div class="w"><span id="ce">CHECK</span><span id="oil">OIL</span><span id="bat">BATT</span><span id="st">--</span></div>
+<div class="warnings">
+<span class="warn" id="ce">CHECK ENGINE</span>
+<span class="warn" id="oil">OIL PRESS</span>
+<span class="warn" id="bat">BATTERY</span>
+<span class="warn" id="st">OBD: --</span>
+</div>
 <script>
-function drawGauge(ctx,w,h,val,min,max,label,color,ticks){ctx.clearRect(0,0,w,h);const cx=w/2,cy=h/2,r=Math.min(w,h)/2-20;ctx.fillStyle='#0a0a0a';ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#1a1a1a';ctx.lineWidth=3;ctx.stroke();const sa=Math.PI*0.75,ea=Math.PI*2.25,range=ea-sa;for(let i=0;i<=ticks;i++){const a=sa+range*i/ticks;const cos=Math.cos(a),sin=Math.sin(a);const isM=i%(ticks/5)==0;ctx.strokeStyle='#444';ctx.lineWidth=isM?3:1;const len=isM?15:8;ctx.beginPath();ctx.moveTo(cx+cos*(r-5),cy+sin*(r-5));ctx.lineTo(cx+cos*(r-5-len),cy+sin*(r-5-len));ctx.stroke();if(isM){ctx.fillStyle='#888';ctx.font=(w>200?14:9)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';const num=min+i*(max-min)/ticks;ctx.fillText(num,cx+cos*(r-25),cy+sin*(r-25));}}const p=(val-min)/(max-min);const aa=sa+range*Math.max(0,Math.min(1,p));ctx.strokeStyle=color;ctx.lineWidth=4;ctx.beginPath();ctx.arc(cx,cy,r-10,sa,aa);ctx.stroke();ctx.save();ctx.translate(cx,cy);ctx.rotate(aa);ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(r-15,0);ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,6,0,Math.PI*2);ctx.fill();ctx.restore();ctx.fillStyle='#fff';ctx.font=(w>200?12:8)+'px Arial';ctx.textAlign='center';ctx.fillText(label,cx,cy-r+15);ctx.font=(w>200?24:16)+'px Arial';ctx.fillStyle=color;ctx.fillText(Math.round(val),cx,cy+r-20);}
-const cfg=[
-{id:'c1',min:0,max:140,label:'SPEED MPH',color:'#0f6',ticks:14},
-{id:'c2',min:0,max:8,label:'RPM x1000',color:'#f55',ticks:8},
-{id:'c3',min:120,max:270,label:'COOLANT F',color:'#4cf',ticks:15},
-{id:'c4',min:0,max:100,label:'FUEL',color:'#fd0',ticks:10},
-{id:'c5',min:0,max:100,label:'LOAD',color:'#e4f',ticks:10},
-{id:'c6',min:10,max:16,label:'VOLTS',color:'#6fa',ticks:6},
-{id:'c7',min:30,max:210,label:'INTAKE F',color:'#48f',ticks:18},
-{id:'c8',min:0,max:100,label:'THROTTLE',color:'#fa4',ticks:10}
-];
-const ctxs=cfg.map(c=>{const el=document.getElementById(c.id);return{ctx:el.getContext('2d'),w:el.width,h:el.height,...c}});
-async function u(){try{const r=await fetch('/api/data'),d=await r.json();
+const opts={angle:0.15,lineWidth:0.2,radiusScale:1,pointer:{length:0.6,strokeWidth:0.035,color:'#fff'},limitMax:false,limitMin:false,colorStart:'#6fadcf',colorStop:'#8fc0da',strokeColor:'#1a1a1a',generateGradient:true,highDpiSupport:true,percentColors:[[0.0,'#0f6'],[0.5,'#ff0'],[1.0,'#f55']]};
+const gauges={
+g1:new Gauge(document.getElementById('g1')).setOptions({...opts,angle:0.2,lineWidth:0.15}),
+g2:new Gauge(document.getElementById('g2')).setOptions({...opts,angle:0.2,lineWidth:0.15,percentColors:[[0.0,'#0f6'],[0.7,'#ff0'],[0.85,'#f55']]}),
+g3:new Gauge(document.getElementById('g3')).setOptions({...opts,percentColors:[[0.0,'#4cf'],[0.6,'#0f6'],[0.85,'#f55']]}),
+g4:new Gauge(document.getElementById('g4')).setOptions({...opts,percentColors:[[0.0,'#f55'],[0.25,'#ff0'],[0.5,'#0f6']]}),
+g5:new Gauge(document.getElementById('g5')).setOptions({...opts,percentColors:[[0.0,'#0f6'],[0.7,'#ff0'],[0.9,'#f55']]}),
+g6:new Gauge(document.getElementById('g6')).setOptions({...opts,percentColors:[[0.0,'#f55'],[0.4,'#ff0'],[0.6,'#0f6']]}),
+g7:new Gauge(document.getElementById('g7')).setOptions({...opts,percentColors:[[0.0,'#48f'],[0.5,'#0f6'],[0.8,'#f55']]}),
+g8:new Gauge(document.getElementById('g8')).setOptions({...opts,percentColors:[[0.0,'#0f6'],[0.7,'#ff0'],[0.9,'#f55']]})
+};
+gauges.g1.maxValue=140;gauges.g1.setMinValue(0);gauges.g1.animationSpeed=32;
+gauges.g2.maxValue=8;gauges.g2.setMinValue(0);gauges.g2.animationSpeed=32;
+gauges.g3.maxValue=270;gauges.g3.setMinValue(120);gauges.g3.animationSpeed=28;
+gauges.g4.maxValue=100;gauges.g4.setMinValue(0);gauges.g4.animationSpeed=28;
+gauges.g5.maxValue=100;gauges.g5.setMinValue(0);gauges.g5.animationSpeed=28;
+gauges.g6.maxValue=16;gauges.g6.setMinValue(10);gauges.g6.animationSpeed=28;
+gauges.g7.maxValue=210;gauges.g7.setMinValue(30);gauges.g7.animationSpeed=28;
+gauges.g8.maxValue=100;gauges.g8.setMinValue(0);gauges.g8.animationSpeed=28;
+async function update(){try{const r=await fetch('/api/data');const d=await r.json();
 const mph=d.speed*0.621371;const coolF=d.coolant*9/5+32;const intF=d.intake*9/5+32;
-drawGauge(ctxs[0].ctx,ctxs[0].w,ctxs[0].h,mph,0,140,'SPEED MPH','#0f6',14);
-drawGauge(ctxs[1].ctx,ctxs[1].w,ctxs[1].h,d.rpm/1000,0,8,'RPM x1000','#f55',8);
-drawGauge(ctxs[2].ctx,ctxs[2].w,ctxs[2].h,coolF,120,270,'COOLANT F','#4cf',15);
-drawGauge(ctxs[3].ctx,ctxs[3].w,ctxs[3].h,d.fuel,0,100,'FUEL','#fd0',10);
-drawGauge(ctxs[4].ctx,ctxs[4].w,ctxs[4].h,d.load,0,100,'LOAD','#e4f',10);
-drawGauge(ctxs[5].ctx,ctxs[5].w,ctxs[5].h,d.voltage,10,16,'VOLTS','#6fa',6);
-drawGauge(ctxs[6].ctx,ctxs[6].w,ctxs[6].h,intF,30,210,'INTAKE F','#48f',18);
-drawGauge(ctxs[7].ctx,ctxs[7].w,ctxs[7].h,d.throttle,0,100,'THROTTLE','#fa4',10);
-document.getElementById('ce').className=d.checkEngine?'on':'';
-document.getElementById('oil').className=d.oilPressure?'on':'';
-document.getElementById('bat').className=d.voltage<12?'on':'';
-document.getElementById('st').textContent='OBD:'+(d.obdConnected?'OK':'--');
-}catch(e){}}u();setInterval(u,500);
+gauges.g1.set(mph);gauges.g2.set(d.rpm/1000);gauges.g3.set(coolF);gauges.g4.set(d.fuel);
+gauges.g5.set(d.load);gauges.g6.set(d.voltage);gauges.g7.set(intF);gauges.g8.set(d.throttle);
+document.getElementById('ce').className=d.checkEngine?'warn on':'warn';
+document.getElementById('oil').className=d.oilPressure?'warn on':'warn';
+document.getElementById('bat').className=d.voltage<12?'warn on':'warn';
+document.getElementById('st').textContent='OBD: '+(d.obdConnected?'CONNECTED':'OFFLINE');
+document.getElementById('st').className=d.obdConnected?'warn':'warn on';
+}catch(e){console.error(e);}}
+update();setInterval(update,500);
 </script></body></html>
 )rawliteral";
 
