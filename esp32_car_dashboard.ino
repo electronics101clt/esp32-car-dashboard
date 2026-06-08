@@ -55,8 +55,16 @@ body{background:#000;color:#fff;font-family:Arial,sans-serif;overflow-x:hidden}
 .gauge-value{position:absolute;bottom:25%;left:50%;transform:translateX(-50%);font-size:24px;font-weight:bold;color:#fff;text-shadow:0 0 10px rgba(255,255,255,0.5)}
 .gauge-unit{position:absolute;bottom:20%;left:50%;transform:translateX(-50%);font-size:10px;color:#888}
 .warnings{display:flex;gap:15px;justify-content:center;padding:20px;position:fixed;bottom:0;width:100%;background:rgba(17,17,17,0.95);backdrop-filter:blur(10px);border-top:1px solid #333}
-.warn{padding:8px 16px;border-radius:6px;font-size:11px;font-weight:bold;background:#222;color:#666;border:2px solid #333;transition:all 0.3s}
+.warn{padding:8px 16px;border-radius:6px;font-size:11px;font-weight:bold;background:#222;color:#666;border:2px solid #333;transition:all 0.3s;cursor:pointer}
 .warn.on{background:#d00;color:#fff;border-color:#f44;box-shadow:0 0 20px rgba(255,68,68,0.6);animation:pulse 1s infinite}
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:1000;justify-content:center;align-items:center}
+.modal-content{background:#222;padding:30px;border-radius:10px;max-width:500px;width:90%;border:2px solid #f44;box-shadow:0 0 30px rgba(255,68,68,0.5)}
+.modal-title{font-size:20px;font-weight:bold;color:#f44;margin-bottom:20px;text-align:center}
+.modal-close{position:absolute;top:15px;right:20px;font-size:30px;color:#888;cursor:pointer;transition:color 0.3s}
+.modal-close:hover{color:#fff}
+.dtc-list{list-style:none;max-height:300px;overflow-y:auto}
+.dtc-item{padding:10px;margin:8px 0;background:#333;border-left:4px solid #f44;border-radius:4px;font-family:monospace;font-size:14px}
+.dtc-empty{text-align:center;color:#888;padding:20px;font-size:14px}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}
 @media(max-width:768px){.gauge canvas{width:120px!important;height:120px!important}.gauge-value{font-size:18px}}
 </style></head><body>
@@ -71,10 +79,17 @@ body{background:#000;color:#fff;font-family:Arial,sans-serif;overflow-x:hidden}
 <div class="gauge"><canvas id="g8" width="150" height="150"></canvas><div class="gauge-label">THROTTLE</div><div class="gauge-value" id="v8">0</div><div class="gauge-unit">%</div></div>
 </div>
 <div class="warnings">
-<span class="warn" id="ce">CHECK ENGINE</span>
+<span class="warn" id="ce" onclick="showDTC()">CHECK ENGINE</span>
 <span class="warn" id="oil">OIL PRESS</span>
 <span class="warn" id="bat">BATTERY</span>
 <span class="warn" id="st">OBD: --</span>
+</div>
+<div class="modal" id="dtcModal" onclick="if(event.target==this)closeDTC()">
+<div class="modal-content">
+<span class="modal-close" onclick="closeDTC()">&times;</span>
+<div class="modal-title">DIAGNOSTIC TROUBLE CODES</div>
+<ul class="dtc-list" id="dtcList"><li class="dtc-empty">Loading...</li></ul>
+</div>
 </div>
 <script>
 function drawGauge(ctx,w,h,val,min,max,zones){
@@ -128,6 +143,25 @@ document.getElementById('st').className=d.obdConnected?'warn':'warn on';
 }catch(e){}}
 gauges.forEach(g=>drawGauge(g.ctx,g.canvas.width,g.canvas.height,0,g.min,g.max,g.zones));
 update();setInterval(update,100);
+async function showDTC(){
+const modal=document.getElementById('dtcModal');
+const list=document.getElementById('dtcList');
+modal.style.display='flex';
+list.innerHTML='<li class="dtc-empty">Reading codes...</li>';
+try{
+const r=await fetch('/api/dtc');
+const d=await r.json();
+if(!d.connected){
+list.innerHTML='<li class="dtc-empty">OBD not connected</li>';
+}else if(d.codes.length===0){
+list.innerHTML='<li class="dtc-empty">No trouble codes found</li>';
+}else{
+list.innerHTML=d.codes.map(c=>'<li class="dtc-item">'+c+'</li>').join('');
+}
+}catch(e){
+list.innerHTML='<li class="dtc-empty">Error reading codes</li>';
+}}
+function closeDTC(){document.getElementById('dtcModal').style.display='none';}
 </script></body></html>
 )rawliteral";
 
@@ -414,6 +448,77 @@ void handleData() {
     server.send(200, "application/json", json);
 }
 
+String getDTCType(char c) {
+    switch(c) {
+        case '0': return "P0";
+        case '1': return "P1";
+        case '2': return "P2";
+        case '3': return "P3";
+        case '4': return "C0";
+        case '5': return "C1";
+        case '6': return "C2";
+        case '7': return "C3";
+        case '8': return "B0";
+        case '9': return "B1";
+        case 'A': return "B2";
+        case 'B': return "B3";
+        case 'C': return "U0";
+        case 'D': return "U1";
+        case 'E': return "U2";
+        case 'F': return "U3";
+        default: return "??";
+    }
+}
+
+void handleDTC() {
+    Serial.println("DTC request");
+    String json = "{\"codes\":[";
+
+    if (obdConnected) {
+        String resp = sendELM("03");
+        Serial.print("DTC Response: ");
+        Serial.println(resp);
+
+        // Parse response: "43 01 33 00 00 00 00" = 1 code (P0133)
+        // Format: 43 [count] [code1_hi] [code1_lo] [code2_hi] [code2_lo] ...
+        if (resp.indexOf("43") >= 0) {
+            int idx = resp.indexOf("43");
+            // Remove all spaces for easier parsing
+            resp.replace(" ", "");
+            resp = resp.substring(idx + 2);  // Skip "43"
+
+            if (resp.length() >= 2) {
+                int count = parseHex(resp, 0, 2);
+                Serial.print("DTC count: ");
+                Serial.println(count);
+
+                bool first = true;
+                for (int i = 0; i < count && (i * 4 + 2) < resp.length(); i++) {
+                    int codeIdx = 2 + (i * 4);
+                    if (codeIdx + 4 <= resp.length()) {
+                        String codeHex = resp.substring(codeIdx, codeIdx + 4);
+                        if (codeHex != "0000") {
+                            // Parse DTC format
+                            char firstChar = codeHex.charAt(0);
+                            String dtcType = getDTCType(firstChar);
+                            String dtcNum = codeHex.substring(1);
+
+                            if (!first) json += ",";
+                            json += "\"" + dtcType + dtcNum + "\"";
+                            first = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    json += "],\"connected\":" + String(obdConnected ? "true" : "false") + "}";
+
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    server.send(200, "application/json", json);
+}
+
 void setup() {
     Serial.begin(9600);
     delay(1000);
@@ -448,6 +553,7 @@ void setup() {
 
     server.on("/", handleRoot);
     server.on("/api/data", handleData);
+    server.on("/api/dtc", handleDTC);
     server.begin();
     Serial.println("Web server started!");
 
