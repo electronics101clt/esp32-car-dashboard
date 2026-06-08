@@ -50,6 +50,16 @@ Realistic automotive dashboard with 8 analog gauges featuring tick marks, number
 
 ## Installation
 
+> **⚠️ IMPORTANT**: This sketch requires a large partition scheme (2MB app space). The default partition scheme will NOT work. You must use **No OTA (2MB APP/2MB SPIFFS)** partition scheme.
+
+### Partition Scheme Requirement
+
+This sketch uses **~1.7MB (80%)** of program storage due to the Gauge.js library and BLE functionality. The default ESP32 partition scheme only provides 1.3MB for the app, which is insufficient.
+
+**Required partition scheme:**
+- **No OTA (2MB APP/2MB SPIFFS)** - Provides 2MB for application (removes OTA update capability)
+- Alternative: **Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)** - If you need OTA updates
+
 ### Using Arduino CLI
 ```bash
 # Install ESP32 board support
@@ -62,14 +72,14 @@ arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=no_ota esp32_car_da
 arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32:PartitionScheme=no_ota,UploadSpeed=115200 esp32_car_dashboard.ino
 ```
 
-> **Note**: This sketch requires the `no_ota` partition scheme due to its size (~1.7MB). The default partition only allows 1.3MB for the app. Using `no_ota` provides 2MB for the application by removing OTA update capability.
-
 ### Using Arduino IDE
 1. Open `esp32_car_dashboard.ino`
 2. Select Board: **ESP32 Dev Module**
 3. Select Port: (your ESP32 port)
-4. Go to Tools → Partition Scheme → **No OTA (2MB APP/2MB SPIFFS)**
+4. **CRITICAL**: Go to Tools → Partition Scheme → **No OTA (2MB APP/2MB SPIFFS)**
 5. Click **Upload**
+
+**If upload fails with "sketch too large" error**, verify you selected the correct partition scheme in step 4.
 
 ## Configuration
 
