@@ -63,7 +63,7 @@ body{background:#000;color:#fff;font-family:Arial,sans-serif;overflow-x:hidden}
 </head><body>
 <div class="dash">
 <div class="gauge-wrapper large"><canvas id="g1"></canvas><div class="gauge-label">SPEED MPH</div></div>
-<div class="gauge-wrapper large"><canvas id="g2"></canvas><div class="gauge-label">RPM x1000</div></div>
+<div class="gauge-wrapper large"><canvas id="g2"></canvas><div class="gauge-label">RPM</div></div>
 <div class="gauge-wrapper small"><canvas id="g3"></canvas><div class="gauge-label">COOLANT °F</div></div>
 <div class="gauge-wrapper small"><canvas id="g4"></canvas><div class="gauge-label">FUEL %</div></div>
 <div class="gauge-wrapper small"><canvas id="g5"></canvas><div class="gauge-label">LOAD %</div></div>
@@ -90,7 +90,7 @@ g7:new Gauge(document.getElementById('g7')).setOptions({...opts,percentColors:[[
 g8:new Gauge(document.getElementById('g8')).setOptions({...opts,percentColors:[[0.0,'#0f6'],[0.7,'#ff0'],[0.9,'#f55']]})
 };
 gauges.g1.maxValue=140;gauges.g1.setMinValue(0);gauges.g1.animationSpeed=32;
-gauges.g2.maxValue=8;gauges.g2.setMinValue(0);gauges.g2.animationSpeed=32;
+gauges.g2.maxValue=8000;gauges.g2.setMinValue(0);gauges.g2.animationSpeed=32;
 gauges.g3.maxValue=270;gauges.g3.setMinValue(120);gauges.g3.animationSpeed=28;
 gauges.g4.maxValue=100;gauges.g4.setMinValue(0);gauges.g4.animationSpeed=28;
 gauges.g5.maxValue=100;gauges.g5.setMinValue(0);gauges.g5.animationSpeed=28;
@@ -99,7 +99,7 @@ gauges.g7.maxValue=210;gauges.g7.setMinValue(30);gauges.g7.animationSpeed=28;
 gauges.g8.maxValue=100;gauges.g8.setMinValue(0);gauges.g8.animationSpeed=28;
 async function update(){try{const r=await fetch('/api/data');const d=await r.json();
 const mph=d.speed*0.621371;const coolF=d.coolant*9/5+32;const intF=d.intake*9/5+32;
-gauges.g1.set(mph);gauges.g2.set(d.rpm/1000);gauges.g3.set(coolF);gauges.g4.set(d.fuel);
+gauges.g1.set(mph);gauges.g2.set(d.rpm);gauges.g3.set(coolF);gauges.g4.set(d.fuel);
 gauges.g5.set(d.load);gauges.g6.set(d.voltage);gauges.g7.set(intF);gauges.g8.set(d.throttle);
 document.getElementById('ce').className=d.checkEngine?'warn on':'warn';
 document.getElementById('oil').className=d.oilPressure?'warn on':'warn';
